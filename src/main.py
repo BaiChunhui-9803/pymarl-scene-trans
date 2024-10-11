@@ -13,10 +13,10 @@ import yaml
 
 from run import run
 
-SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
+SETTINGS['CAPTURE_MODE'] = "sys" # set to "no" if you want to see stdout/stderr in console
 logger = get_logger()
 
-ex = Experiment("pymarl")
+ex = Experiment("pymarl1")
 ex.logger = logger
 ex.captured_out_filter = apply_backspaces_and_linefeeds
 
@@ -72,6 +72,7 @@ def config_copy(config):
 
 if __name__ == '__main__':
     params = deepcopy(sys.argv)
+    # params = "src/main.py --config=qmix --env-config=sc2 with env_args.map_name=2s3z"
 
     # Get the defaults from default.yaml
     with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
@@ -83,6 +84,8 @@ if __name__ == '__main__':
     # Load algorithm and env base configs
     env_config = _get_config(params, "--env-config", "envs")
     alg_config = _get_config(params, "--config", "algs")
+    print(env_config)
+    print(alg_config)
     # config_dict = {**config_dict, **env_config, **alg_config}
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)
