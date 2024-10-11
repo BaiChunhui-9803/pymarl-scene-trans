@@ -1,0 +1,3 @@
+[submodule "lib-smac-overwrite"]
+	path = lib-smac-overwrite
+	url = https://github.com/BaiChunhui-9803/lib-smac-overwrite.git
