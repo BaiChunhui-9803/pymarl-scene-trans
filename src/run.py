@@ -26,6 +26,7 @@ def run(_run, _config, _log):
 
     # setup loggers
     logger = Logger(_log)
+    print(_log)
 
     _log.info("Experiment Parameters:")
     experiment_params = pprint.pformat(_config,
@@ -60,7 +61,13 @@ def run(_run, _config, _log):
     print("Exiting script")
 
     # Making sure framework really exits
-    os._exit(os.EX_OK)
+    # os._exit(os.EX_OK)
+    # bai - changed to below
+    if hasattr(os, 'EX_OK'):
+        exit_status = os.EX_OK
+    else:
+        exit_status = 0
+    print(f"Exit status: {exit_status}")
 
 
 def evaluate_sequential(args, runner):
