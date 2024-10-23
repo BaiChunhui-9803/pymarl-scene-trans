@@ -98,42 +98,42 @@ data_HRL_path = {
 
 data_path = {
     "MarineMicro_MvsM_4": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_4/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_4/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_4/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_4/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_4/",
         "qtran": "../results_saved/qtran t_max=2050000/MarineMicro_MvsM_4/",
     },
     "MarineMicro_MvsM_4_mirror": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_4_mirror/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_4_mirror/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_4_mirror/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_4_mirror/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_4_mirror/",
         "qtran": "../results_saved/qtran t_max=2050000/MarineMicro_MvsM_4_mirror/",
     },
     "MarineMicro_MvsM_4_dist": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_4_dist/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_4_dist/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_4_dist/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_4_dist/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_4_dist/",
         "qtran": "../results_saved/qtran t_max=2050000/MarineMicro_MvsM_4_dist/",
     },
     "MarineMicro_MvsM_4_dist_mirror": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_4_dist_mirror/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_4_dist_mirror/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_4_dist_mirror/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_4_dist_mirror/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_4_dist_mirror/",
         "qtran": "../results_saved/qtran t_max=2050000/MarineMicro_MvsM_4_dist_mirror/",
     },
     "MarineMicro_MvsM_8": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_8/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_8/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_8/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_8/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_8/",
         "qtran": "../results_saved/qtran t_max=2050000/MarineMicro_MvsM_8/",
     },
     "MarineMicro_MvsM_8_mirror": {
-        "qmix": "../results_saved/qmix t_max=1024000/MarineMicro_MvsM_8_mirror/",
+        "qmix": "../results_saved/qmix t_max=2050000/MarineMicro_MvsM_8_mirror/",
         "coma": "../results_saved/coma t_max=2050000/MarineMicro_MvsM_8_mirror/",
         "iql": "../results_saved/iql t_max=2050000/MarineMicro_MvsM_8_mirror/",
         "vdn": "../results_saved/vdn t_max=2050000/MarineMicro_MvsM_8_mirror/",
