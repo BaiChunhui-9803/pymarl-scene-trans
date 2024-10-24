@@ -62,7 +62,7 @@ def run(_run, _config, _log):
 
     # Making sure framework really exits
     # os._exit(os.EX_OK)
-    # bai - changed to below
+    # binich - changed to below
     if hasattr(os, 'EX_OK'):
         exit_status = os.EX_OK
     else:
