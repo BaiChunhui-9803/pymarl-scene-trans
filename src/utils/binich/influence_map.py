@@ -5,7 +5,7 @@ from PIL import Image
 import random
 import cv2
 
-import unit_utils
+from src.utils.binich.unit_utils import UnitUtils
 
 class InfluenceMap:
     def __init__(self, unit_scale: int):
@@ -23,6 +23,11 @@ class InfluenceMap:
         self.min_influence = -16 * unit_scale
         # the influence map
         self.influence_map = np.zeros((int((pow(self.map_resolution, 1))), int((pow(self.map_resolution, 1)))))
+
+
+    def update(self, agents, enemies):
+        pass
+
 
 
     def make_regalur_image(self, img, size=(256, 256)):
@@ -139,7 +144,7 @@ class InfluenceMap:
         return top, bottom, left, right
 
     def get_im_window(self):
-        u_util = unit_utils.UnitUtils()
+        u_util = UnitUtils()
         player1_units = u_util.get_units(u_util.player1_unit_type, 'SELF')
         player2_units = u_util.get_units(u_util.player1_unit_type, 'ENEMY')
         player1_units_features = sorted([(item['tag'], item['x'], item['y']) for item in player1_units], key=lambda x: x[0])
