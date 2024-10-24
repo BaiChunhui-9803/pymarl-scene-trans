@@ -187,7 +187,10 @@ def run_sequential(args, logger):
 
 > [!NOTE]
 >
-> TODO：buffer采样
+> - 调用 `ReplayBuffer` 的 `sample()` 方法，从缓冲区 `buffer` 中随机采样一个批次的episodes，批次大小为 `args.batch_size` 
+> - 将采样得到的episodes批次 `episode_sample` 中的数据进行截断，只保留填充的时间步长，通过截断未填充的时间步长，确保训练数据的有效性和一致性
+>   - `max_t_filled` 方法：返回 `episode_sample` 中填充的最大时间步长。该方法检查每个 episode 的时间步长，并找到最大的时间步长
+>   - `episode_sample[:, :max_ep_t]`：使用切片操作，截取 `episode_sample` 中从第一个时间步到 `max_ep_t` 的所有时间步的数据
 
 
 

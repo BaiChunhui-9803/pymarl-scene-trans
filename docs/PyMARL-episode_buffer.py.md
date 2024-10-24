@@ -16,6 +16,26 @@
 
 ```python
 class EpisodeBatch:
+    def __getitem__(self, item):
+```
+
+> [!CAUTION]
+>
+> `EpisodeBatch` 实现了 `__getitem__` 方法，使对象能够使用索引访问其内部数据
+>
+> 可以理解为`EpisodeBatch` 对象本身是一个列表或字典，可以通过方括号 `[]` 访问内部元素
+>
+> `EpisodeBatch` 的主要数据封装在了 `self.data.transition_data` 和 `self.data.episode_data` 两个字典中。如此，以下操作是成立的且等价于 `self.data.transition_data["state"]`
+
+```python
+self.new_batch = partial(EpisodeBatch, *, *, *)
+self.new_batch["state"]
+```
+
+------
+
+```python
+class EpisodeBatch:
     def __init__(self,
                  scheme,
                  groups,
@@ -355,4 +375,23 @@ class ReplayBuffer(EpisodeBatch):
 >      递归调用 `insert_episode_batch` 方法，将 `ep_batch` 分成两部分分别插入：先插入前 `buffer_left` 部分，再插入剩余部分
 
 
+
+
+
+```python
+class ReplayBuffer(EpisodeBatch):
+    def sample(self, batch_size):
+        assert self.can_sample(batch_size)
+        if self.episodes_in_buffer == batch_size:
+            return self[:batch_size]
+        else:
+            # Uniform sampling only atm
+            ep_ids = np.random.choice(self.episodes_in_buffer, batch_size, replace=False)
+            return self[ep_ids]
+```
+
+> [!NOTE]
+>
+> - 如果满足 `self.can_sample`条件（ `self.episodes_in_buffer >= batch_size` ），则从缓冲区 `buffer` 随机选择`batch_size`个episodes 
+> - 返回 `self[:batch_size]` 和 `self[ep_ids]` ，这些操作会调用 `EpisodeBatch` 类的 `__getitem__` 方法，返回一个新的 `EpisodeBatch` 对象。详见本页开头。
 
