@@ -3,6 +3,8 @@ import os
 import pprint
 import time
 import threading
+from turtledemo.sorting_animate import start_ssort
+
 import torch as th
 from types import SimpleNamespace as SN
 from utils.logging import Logger
@@ -14,6 +16,8 @@ from runners import REGISTRY as r_REGISTRY
 from controllers import REGISTRY as mac_REGISTRY
 from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
+
+from components.custom_episode_buffer import CustomReplayBuffer
 
 
 def run(_run, _config, _log):
@@ -92,33 +96,50 @@ def run_sequential(args, logger):
     args.state_shape = env_info["state_shape"]
 
     # Default/Base scheme
-    scheme = {
-        "state": {"vshape": env_info["state_shape"]},
-        "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
-        "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
-        "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
-        "reward": {"vshape": (1,)},
-        "terminated": {"vshape": (1,), "dtype": th.uint8},
-    }
-    groups = {
-        "agents": args.n_agents
-    }
-    preprocess = {
-        "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
-    }
+    if args.custom_scheme is False:
+        scheme = {
+            "state": {"vshape": env_info["state_shape"]},
+            "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
+            "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
+            "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
+            "reward": {"vshape": (1,)},
+            "terminated": {"vshape": (1,), "dtype": th.uint8},
+        }
+        groups = {
+            "agents": args.n_agents
+        }
+        preprocess = {
+            "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
+        }
+    else:
+        scheme = {
+            "im_state": {},
+            "original_state": {},
+            "avail_actions": runner.env.get_avail_actions()
+        }
+        groups = {
+            "agents": args.n_agents
+        }
+        preprocess = {}
 
-    buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
+    # binich - custom buffer
+    if args.runner == "episode_cbs":
+        buffer = CustomReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
+                          preprocess=preprocess,
+                          device="cpu" if args.buffer_cpu_only else args.device)
+    else:
+        buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                           preprocess=preprocess,
                           device="cpu" if args.buffer_cpu_only else args.device)
 
     # Setup multiagent controller here
-    mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
+    controller = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
 
     # Give runner the scheme
-    runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
+    runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=controller)
 
     # Learner
-    learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args)
+    learner = le_REGISTRY[args.learner](controller, buffer.scheme, logger, args)
 
     if args.use_cuda:
         learner.cuda()
