@@ -14,7 +14,11 @@ class CustomEpsilonGreedyActionSelector:
                                               decay="linear")
         self.epsilon = self.schedule.eval(0)
 
-    def select_action(self, agent_inputs, avail_actions, t_env, test_mode=False):
+    def select_action(self, model, state, avail_actions, t_env, test_mode=False):
+        model = model
+        state = state
+        avail_actions = avail_actions
+
 
         # Assuming agent_inputs is a batch of Q-Values for each agent bav
         self.epsilon = self.schedule.eval(t_env)

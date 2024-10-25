@@ -1,6 +1,7 @@
 from modules.agents import REGISTRY as agent_REGISTRY
 from components.custom_action_selectors import REGISTRY as action_REGISTRY
 import torch as th
+from src.components.epsilon_schedules import DecayThenFlatSchedule
 
 
 # This multi-agent controller shares parameters between agents
@@ -9,21 +10,32 @@ class CustomController:
         self.n_agents = args.n_agents
         self.scheme = scheme
         self.args = args
+        self.agent = None
         # input_shape = self._get_input_shape(scheme)
         self._build_agents()
         self.agent_output_type = args.agent_output_type
-
+        self.schedule = DecayThenFlatSchedule(args.epsilon_start, args.epsilon_finish, args.epsilon_anneal_time,
+                                              decay="linear")
+        self.epsilon = self.schedule.eval(0)
         self.action_selector = action_REGISTRY[args.action_selector](args)
 
         # self.hidden_states = None
 
-    def select_actions(self, ep_batch, t_ep, t_env, bs=0, test_mode=False):
+    def select_actions(self, env, ep_batch, t_ep, t_env, bs=0, test_mode=False):
         # Only select actions for the selected batch elements in bs
         avail_actions = ep_batch["avail_actions"][bs][t_ep]
-        agent_output = self.get_model()
+        state_im = ep_batch["im_state"][bs][t_ep]
+        cluster_item = self.agent.cluster_qtable.choose_action(state_im, self.get_epsilon(t_env, test_mode))
+        env.cluster.update(env.agents, env.enemies)
+        cluster_result = getattr(env.cluster, cluster_item)()
+        self.agent.update_combat_qtable_dict(cluster_result)
+        # model = self.get_model()
+
+
         # agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
-        chosen_actions = self.action_selector.select_action(agent_output, avail_actions, t_env, test_mode=test_mode)
-        return chosen_actions
+        # chosen_actions = self.action_selector.select_action(model, cur_state, avail_actions, t_env, test_mode=test_mode)
+        # return chosen_actions
+        pass
 
     def get_model(self):
         model = {
@@ -31,6 +43,29 @@ class CustomController:
             "combat_qtable_dict": self.agent.get_combat_qtable_dict()
         }
         return model
+
+    def get_state(self):
+        return self.agent.get_state()
+
+    def get_epsilon(self, t_env, test_mode=False):
+        self.epsilon = self.schedule.eval(t_env)
+        if test_mode:
+            # Greedy action selection only
+            self.epsilon = 0.0
+        return self.epsilon
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def forward(self, ep_batch, t, test_mode=False):
