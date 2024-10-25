@@ -60,9 +60,11 @@ class EpisodeRunner:
             pre_transition_data = {
                 # binich - self.env.get_state() -> self.env.get_im_state()
                 # using influence map hashing state
-                "state": [self.env.get_im_state()],
-                "avail_actions": [self.env.get_avail_actions()],
-                "obs": [self.env.get_obs()]
+                "im_state": self.env.get_im_state(),
+                # binich - Preserved the original state.
+                "original_state": self.env.get_original_state(),
+                "avail_actions": self.env.get_avail_actions(),
+                # "obs": [self.env.get_obs()]
             }
 
             self.batch.update(pre_transition_data, ts=self.t)
