@@ -136,7 +136,7 @@ def run_sequential(args, logger):
     controller = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
 
     # Give runner the scheme
-    runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=controller)
+    runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, controller=controller)
 
     # Learner
     learner = le_REGISTRY[args.learner](controller, buffer.scheme, logger, args)
