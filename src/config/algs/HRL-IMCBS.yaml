@@ -1,7 +1,7 @@
 # --- HRL-IM/CBS specific parameters ---
 
 # use epsilon greedy action selector
-action_selector: "epsilon_greedy"
+action_selector: "custom_epsilon_greedy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 50000
@@ -14,9 +14,14 @@ buffer_size: 5000
 #target_update_interval: 200
 
 # use the Q_Learner to train
+agent: "q"
 agent_output_type: "q"
 learner: "hrl_q_learner"
 double_q: True
 mixer:
 
 name: "HRL-IMCBS"
+
+# Using custom controller and scheme
+mac: "custom_controller"
+custom_scheme: True
