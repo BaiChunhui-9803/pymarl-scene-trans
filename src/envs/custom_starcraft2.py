@@ -10,6 +10,7 @@ from s2clientprotocol import raw_pb2 as r_pb
 from s2clientprotocol import debug_pb2 as d_pb
 
 from src.utils.binich.influence_map import InfluenceMap
+from src.utils.binich.cluster import Cluster
 
 actions = {
     "move": 16,  # target: PointOrUnit
@@ -27,7 +28,9 @@ attributes = [
     "pos"
 ]
 
-
+scripts = {
+    "script_1": 1,
+}
 
 
 class CustomStarCraft2Env(StarCraft2Env):
@@ -38,21 +41,34 @@ class CustomStarCraft2Env(StarCraft2Env):
         self.window_size = (1280, 960)
 
         self.im = InfluenceMap(self.n_agents)
+        self.cluster = Cluster(self.n_agents)
         pass
 
 
+    # binich - custom method for getting state using influence map hashing
     def get_im_state(self):
-        agents = self.agents
-        enemies = self.enemies
-        self.im.update(agents, enemies)
+        self.im.update(self.agents, self.enemies)
         im_state = self.im.get_im_hash()
-        print(im_state)
         return im_state
 
+    def get_original_state(self):
+        self.im.update(self.agents, self.enemies)
+        original_state = {'featured_agents': self.im.featured_agents, 'featured_enemies': self.im.featured_enemies}
+        return original_state
+
+
+
+
+
+
     def get_avail_actions(self):
-        avail_actions = []
-        im_state = self.get_im_state()
-        print(im_state)
+        avail_actions = {
+            "avail_cluster_strengths": self.cluster.cluster_strengths,
+            "avail_scripts": scripts
+        }
+        # self.cluster.update(self.agents, self.enemies)
+        # cluster = self.cluster.kmeans(3)
+        return avail_actions
 
 
     def script_1(self):
