@@ -19,7 +19,7 @@ actions = {
 }
 
 attributes = [
-    "alliance",
+    "owner",
     "tag",
     "unit_type",
     "health",
@@ -40,37 +40,20 @@ class CustomStarCraft2Env(StarCraft2Env):
         self.im = InfluenceMap(self.n_agents)
         pass
 
-    def get_agents_dict(self):
-        agents = {}
-        # print(self.agents)[]
-        for agent_id in range(self.n_agents):
-            agents[agent_id] = {}
-            print(self.agents[agent_id])
-            for attr in attributes:
-                agents[agent_id][attr] = self.agents[agent_id][attr]
-        return agents
-
-    def get_enemies_dict(self):
-        enemies = {}
-        for enemy_id in range(self.n_enemies):
-            enemies[enemy_id] = {}
-            for attr in attributes:
-                enemies[enemy_id][attr] = self.enemies(enemy_id)[attr]
-        return enemies
 
     def get_im_state(self):
-        agents = self.get_agents_dict()
-        enemies = self.get_enemies_dict()
+        agents = self.agents
+        enemies = self.enemies
         self.im.update(agents, enemies)
         im_state = self.im.get_im_hash()
+        print(im_state)
         return im_state
 
     def get_avail_actions(self):
         avail_actions = []
-        self.get_im_state()
+        im_state = self.get_im_state()
+        print(im_state)
 
-        # for agent_id in range(self.n_agents):
-        #     avail_actions.append(self.get_avail_agent_actions(agent_id))
 
     def script_1(self):
         action_id = actions["attack"]

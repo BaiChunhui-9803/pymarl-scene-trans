@@ -58,7 +58,9 @@ class EpisodeRunner:
         while not terminated:
 
             pre_transition_data = {
-                "state": [self.env.get_state()],
+                # binich - self.env.get_state() -> self.env.get_im_state()
+                # using influence map hashing state
+                "state": [self.env.get_im_state()],
                 "avail_actions": [self.env.get_avail_actions()],
                 "obs": [self.env.get_obs()]
             }

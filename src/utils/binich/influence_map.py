@@ -10,23 +10,34 @@ from src.utils.binich.unit_utils import UnitUtils
 class InfluenceMap:
     def __init__(self, unit_scale: int):
         # the number of units of one player in the map
+        self.agents = None
+        self.enemies = None
+        self.sorted_agents = None
+        self.sorted_enemies = None
+        self.featured_agents = None
+        self.featured_enemies = None
         self.unit_scale = unit_scale
         # the resolution of the map, default is 128
         self.map_resolution = 128
         # the boundary width of the map
         self.map_boundary_with = 2
         # the influence list of player1 and player2
-        self.player1_influence_list = [25]
+        self.player1_influence_list = [16, 9, 4, 1]
         self.player2_influence_list = [-16, -9, -4, -1]
         # the max/min influence value
-        self.max_influence = 25 * unit_scale
+        self.max_influence = 16 * unit_scale
         self.min_influence = -16 * unit_scale
         # the influence map
         self.influence_map = np.zeros((int((pow(self.map_resolution, 1))), int((pow(self.map_resolution, 1)))))
 
 
     def update(self, agents, enemies):
-        pass
+        self.agents = agents
+        self.enemies = enemies
+        self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y} for agent in self.agents.values()]
+        self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y} for enemy in self.enemies.values()]
+        self.featured_agents = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_enemies], key=lambda x: x[0])
+        self.featured_enemies = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_agents], key=lambda x: x[0])
 
 
 
@@ -105,10 +116,10 @@ class InfluenceMap:
                                 += self.player2_influence_list[ripple_level]
 
     def transfer_array_to_img(self, arr: np.ndarray):
-        norm = mcolors.TwoSlopeNorm(vmin=-self.min_influence, vcenter=0.0, vmax=self.max_influence)
+        norm = mcolors.TwoSlopeNorm(vmin=self.min_influence, vcenter=0.0, vmax=self.max_influence)
         p1 = sns.heatmap(arr, cmap='RdBu', norm=norm, annot=False, cbar=False, square=True, xticklabels=False, yticklabels=False)
         s1 = p1.get_figure()
-        img = Image.frombytes('RGB', s1.canvas.get_width_height(), s1.canvas.buffer_rgba())
+        img = Image.frombytes('RGB', s1.canvas.get_width_height(), s1.canvas.buffer_rgba().tobytes())
         return self.make_regalur_image(img)
 
     def calculate_influence_map(self, player1_unit_list, player2_unit_list):
@@ -144,12 +155,10 @@ class InfluenceMap:
         return top, bottom, left, right
 
     def get_im_window(self):
-        u_util = UnitUtils()
-        player1_units = u_util.get_units(u_util.player1_unit_type, 'SELF')
-        player2_units = u_util.get_units(u_util.player1_unit_type, 'ENEMY')
-        player1_units_features = sorted([(item['tag'], item['x'], item['y']) for item in player1_units], key=lambda x: x[0])
-        player2_units_features = sorted([(item['tag'], item['x'], item['y']) for item in player2_units], key=lambda x: x[0])
-        im = self.calculate_influence_map(player1_units_features, player2_units_features)
+        # u_util = UnitUtils()
+        a = self.featured_agents.copy()
+        e = self.featured_enemies.copy()
+        im = self.calculate_influence_map(a, e)
         top, bottom, left, right = self.get_map_boundary(self.map_boundary_with)
         # window of influence map
         wim = im.T[left:right, top:bottom]
