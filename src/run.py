@@ -42,8 +42,8 @@ def run(_run, _config, _log):
         tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
         logger.setup_tb(tb_exp_direc)
 
-    # sacred is on by default
-    logger.setup_sacred(_run)
+    # binich sacred is on by default
+    # logger.setup_sacred(_run)
 
     # Run and train
     run_sequential(args=args, logger=logger)
