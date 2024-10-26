@@ -35,7 +35,7 @@ class QAgent:
     def update_combat_qtable_dict(self, cluster_list):
         combat_table_tag = (cluster_list[0], cluster_list[1])
         if not self.check_sub_table_exist(combat_table_tag):
-            self.combat_qtable_dict.update({combat_table_tag: QLearningTable(self.avail_actions["scripts"])})
+            self.combat_qtable_dict.update({combat_table_tag: QLearningTable(self.avail_actions["avail_scripts"])})
             self.previous_combat_state.update({combat_table_tag: None})
             self.previous_combat_action.update({combat_table_tag: None})
 
