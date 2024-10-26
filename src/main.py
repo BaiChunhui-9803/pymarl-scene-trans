@@ -22,6 +22,11 @@ ex.captured_out_filter = apply_backspaces_and_linefeeds
 
 results_path = os.path.join(dirname(dirname(abspath(__file__))), "results")
 
+# binich - KMeans is known to have a memory leak on Windows with MKL,
+# when there are less chunks than available threads. You can avoid it
+# by setting the environment variable OMP_NUM_THREADS=1. "KMeans is
+# known to have a memory leak on Windows "
+os.environ["OMP_NUM_THREADS"] = "1"
 
 @ex.main
 def my_main(_run, _config, _log):
