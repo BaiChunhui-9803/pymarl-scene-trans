@@ -34,8 +34,8 @@ class Cluster:
         self.enemies = enemies
         self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y} for agent in self.agents.values()]
         self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y} for enemy in self.enemies.values()]
-        self.featured_agents = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_enemies], key=lambda x: x[0])
-        self.featured_enemies = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_agents], key=lambda x: x[0])
+        self.featured_agents = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_agents], key=lambda x: x[0])
+        self.featured_enemies = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_enemies], key=lambda x: x[0])
 
     def kmeans(self, k):
         x = []
@@ -62,7 +62,6 @@ class Cluster:
                     i, (units[i][1], units[i][2]), 0.0, 1.0, [units[i]]
                 ))
         return clu_lists
-        pass
 
     def k_means_025(self):
         units = self.featured_agents
