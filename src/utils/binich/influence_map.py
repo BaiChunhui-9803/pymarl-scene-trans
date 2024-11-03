@@ -4,6 +4,7 @@ import seaborn as sns
 from PIL import Image
 import random
 import cv2
+import matplotlib.pyplot as plt
 
 from src.utils.binich.unit_utils import UnitUtils
 
@@ -22,8 +23,10 @@ class InfluenceMap:
         # the boundary width of the map
         self.map_boundary_with = 2
         # the influence list of player1 and player2
-        self.player1_influence_list = [16, 9, 4, 1]
-        self.player2_influence_list = [-16, -9, -4, -1]
+        # self.player1_influence_list = [16, 9, 4, 1]
+        # self.player2_influence_list = [-16, -9, -4, -1]
+        self.player1_influence_list = [160, 90, 40, 10]
+        self.player2_influence_list = [-160, -90, -40, -10]
         # the max/min influence value
         self.max_influence = 16 * unit_scale
         self.min_influence = -16 * unit_scale
@@ -68,6 +71,7 @@ class InfluenceMap:
                 g_list = hist.T[0]
             if color == 'b':
                 b_list = hist.T[0]
+
         hash_string = ''
         r_max = max(r_list, key=abs)
         g_max = max(g_list, key=abs)

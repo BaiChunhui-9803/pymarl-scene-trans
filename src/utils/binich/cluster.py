@@ -29,6 +29,9 @@ class Cluster:
 
         self._unit_shoot_range = 6
 
+    def get_shoot_range(self):
+        return self._unit_shoot_range
+
     def update(self, agents, enemies):
         self.agents = agents
         self.enemies = enemies
@@ -241,6 +244,16 @@ class Cluster:
         y_var = np.var(y)  # 计算 y 坐标的方差
         variance_sum = x_var + y_var  # 计算 x、y 方差之和
         return variance_sum
+
+    def hashing(self, cluster_list):
+        mapped = ""
+        if len(cluster_list) > 0:
+            for item in cluster_list:
+                mapped += '{:01X}'.format(int(item[0] * 15.9))
+                mapped += '{:01X}'.format(int(item[1] * 15.9))
+            return mapped
+        else:
+            return "X"
 
     def __str__(self):
         return f'Cluster(name={self.name})'

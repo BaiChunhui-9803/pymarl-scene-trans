@@ -115,7 +115,10 @@ def run_sequential(args, logger):
         scheme = {
             "im_state": {},
             "original_state": {},
-            "avail_actions": runner.env.get_avail_actions()
+            "avail_actions": runner.env.get_avail_actions(),
+            "actions": {},
+            "reward": {},
+            "terminated": {},
         }
         groups = {
             "agents": args.n_agents

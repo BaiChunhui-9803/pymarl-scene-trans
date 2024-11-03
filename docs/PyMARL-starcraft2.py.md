@@ -12,10 +12,6 @@
 
 
 
-
-
-
-
 ```python
 class StarCraft2Env(MultiAgentEnv):
     def __init__(

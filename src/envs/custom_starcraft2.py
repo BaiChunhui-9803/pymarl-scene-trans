@@ -37,10 +37,11 @@ scripts = {
     "action_ATK_nearest_weakest": 3,
     "action_ATK_clu_nearest_weakest": 4,
     "action_ATK_threatening": 5,
-    "action_DEF_clu_nearest": 6,
-    "action_MIX_gather": 7,
-    "action_MIX_lure": 8,
-    "action_MIX_lure_2": 9,
+    "action_DEF_nearest": 6,
+    "action_DEF_clu_nearest": 7,
+    # "action_MIX_gather": 7,
+    # "action_MIX_lure": 8,
+    # "action_MIX_lure_2": 9,
 }
 
 
@@ -100,6 +101,12 @@ class CustomStarCraft2Env(StarCraft2Env):
         im_state = self.im.get_im_hash()
         return im_state
 
+    def get_clu_state(self, cluster_result):
+        self.cluster.update(self.agents, self.enemies)
+        cluster_list = [(item[2], item[3]) for item in cluster_result[2]]
+        result = self.cluster.hashing(cluster_list)
+        return result
+
     def get_original_state(self):
         self.im.update(self.agents, self.enemies)
         original_state = {'featured_agents': self.im.featured_agents, 'featured_enemies': self.im.featured_enemies}
@@ -136,6 +143,30 @@ class CustomStarCraft2Env(StarCraft2Env):
                 min_tag = enemy[0]
         return min_tag
 
+    def get_nearest_enemy_pos(self, mp, enemies):
+        min_dis = 99.
+        min_pos = (enemies[0][1], enemies[0][2])
+        for enemy in enemies:
+            dis = distance((enemy[1], enemy[2]), mp)
+            if dis < min_dis:
+                min_dis = dis
+                min_pos = (enemy[1], enemy[2])
+        return min_pos
+
+
+    def get_nearest_weakest_enemy(self, mp, enemies):
+        # 找出最弱的、最近的敌人，最弱的为第一优先级
+        min_dis = 99.
+        min_tag = -1
+        min_health = 9999
+        for enemy in enemies:
+            dis = distance((enemy[1], enemy[2]), mp)
+            if enemy[3] < min_health or (enemy[3] == min_health and dis < min_dis):
+                min_health = enemy[3]
+                min_dis = dis
+                min_tag = enemy[0]
+        return min_tag
+
     def get_local_enemy(self, local_agents, enemies):
         local_enemies = []
         for enemy in enemies:
@@ -143,11 +174,34 @@ class CustomStarCraft2Env(StarCraft2Env):
             count = 0
             for unit in local_agents:
                 sum_distance += distance((enemy[1], enemy[2]), (unit[1], unit[2]))
-                if distance((enemy[1], enemy[2]), (unit[1], unit[2])) < self.cluster._unit_shoot_range:
+                if distance((enemy[1], enemy[2]), (unit[1], unit[2])) < self.cluster.get_shoot_range():
                     count += 1
             local_enemies.append((enemy, count, sum_distance))
         local_enemies.sort(key=lambda x: (x[1], -x[2]), reverse=True)
         return local_enemies
+
+    def get_local_weak_enemy(self, local_agents, enemies):
+        local_enemies = []
+        for enemy in enemies:
+            count = 0
+            for agent in local_agents:
+                if distance((enemy[1], enemy[2]), (agent[1], agent[2])) < self.cluster.get_shoot_range():
+                    count += 1
+            local_enemies.append((enemy, count, enemy[3]/enemy[4]))
+        local_enemies.sort(key=lambda x: (x[1], -x[2]), reverse=True)
+        return local_enemies
+
+    def get_threatening_enemy(self, mp, enemies):
+        max_health = 0
+        min_dis = 99.
+        min_tag = -1
+        for enemy in enemies:
+            dis = distance((enemy[1], enemy[2]), mp)
+            if enemy[3] > max_health or (enemy[3] == max_health and dis < min_dis):
+                max_health = enemy[3]
+                min_dis = dis
+                min_tag = enemy[0]
+        return min_tag
 
     def get_center_position(self, alliance):
         position = (0, 0)
@@ -176,10 +230,7 @@ class CustomStarCraft2Env(StarCraft2Env):
                     queue_command=False,
                 ))))
             return action_list
-        return r_pb.ActionRawUnitCommand(
-                ability_id=actions["no_op"],
-                queue_command=False,
-            )
+        return None
 
     def action_ATK_clu_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
@@ -197,6 +248,80 @@ class CustomStarCraft2Env(StarCraft2Env):
                         unit_tags=[unit[0]],
                         queue_command=False,
                     ))))
+                return action_list
+            return None
+
+    def action_ATK_nearest_weakest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        mp = self.get_center_position('Self')
+        if len(units) > 0 and len(enemies) > 0:
+            for unit in units:
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["attack"],
+                    target_unit_tag=self.get_nearest_weakest_enemy(mp, enemies),
+                    unit_tags=[unit[0]],
+                    queue_command=False,
+                ))))
+            return action_list
+        return None
+
+    def action_ATK_clu_nearest_weakest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        if len(units) > 0 and len(enemies) > 0:
+            for clu in cluster_result[2]:
+                local_enemy_list = self.get_local_weak_enemy(clu[4], enemies)
+                for unit in clu[4]:
+                    action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                        ability_id=actions["attack"],
+                        target_unit_tag=local_enemy_list[0][0][0],
+                        unit_tags=[unit[0]],
+                        queue_command=False,
+                    ))))
+            return action_list
+        return None
+
+    def action_ATK_threatening(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        mp = self.get_center_position('Self')
+        if len(units) > 0 and len(enemies) > 0:
+            for unit in units:
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["attack"],
+                    target_unit_tag=self.get_threatening_enemy(mp, enemies),
+                    unit_tags=[unit[0]],
+                    queue_command=False,
+                ))))
+            return action_list
+        return None
+
+    def action_DEF_nearest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        if len(units) > 0 and len(enemies) > 0:
+            for unit in units:
+                enemy = self.get_nearest_enemy_pos((unit[1], unit[2]), enemies)
+                target = sc_common.Point2D(
+                    x=2 * unit[1] - enemy[0], y=2 * unit[2] - enemy[1]
+                )
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_world_space_pos=target,
+                    unit_tags=[unit[0]],
+                    queue_command=False,
+                ))))
+            return action_list
+        return None
 
     # TODO 重写step()
     def step(self, action_list):
@@ -220,8 +345,67 @@ class CustomStarCraft2Env(StarCraft2Env):
         reward = self.reward_battle()
         info = {"battle_won": False}
 
+        # count units that are still alive
+        dead_allies, dead_enemies = 0, 0
+        for _al_id, al_unit in self.agents.items():
+            if al_unit.health == 0:
+                dead_allies += 1
+        for _e_id, e_unit in self.enemies.items():
+            if e_unit.health == 0:
+                dead_enemies += 1
 
-        pass
+        info["dead_allies"] = dead_allies
+        info["dead_enemies"] = dead_enemies
+
+        # binich - sum of health of all agents and enemies
+        sum_health_agents, sum_health_enemies = 0, 0
+        for _al_id, al_unit in self.agents.items():
+            sum_health_agents += al_unit.health
+        for _e_id, e_unit in self.enemies.items():
+            sum_health_enemies += e_unit.health
+
+        info["sum_health_agents"] = sum_health_agents
+        info["sum_health_enemies"] = sum_health_enemies
+
+        if game_end_code is not None:
+            # Battle is over
+            terminated = True
+            self.battles_game += 1
+            if game_end_code == 1 and not self.win_counted:
+                self.battles_won += 1
+                self.win_counted = True
+                info["battle_won"] = True
+                if not self.reward_sparse:
+                    reward += self.reward_win
+                else:
+                    reward = 1
+            elif game_end_code == -1 and not self.defeat_counted:
+                self.defeat_counted = True
+                if not self.reward_sparse:
+                    reward += self.reward_defeat
+                else:
+                    reward = -1
+
+        elif self._episode_steps >= self.episode_limit:
+            # Episode limit reached
+            terminated = True
+            if self.continuing_episode:
+                info["episode_limit"] = True
+            self.battles_game += 1
+            self.timeouts += 1
+
+        if self.debug:
+            logging.debug("Reward = {}".format(reward).center(60, "-"))
+
+        if terminated:
+            self._episode_count += 1
+
+        if self.reward_scale:
+            reward /= self.max_reward / self.reward_scale_rate
+
+        self.reward = reward
+
+        return reward, terminated, info
 
 
 

@@ -14,6 +14,7 @@ class QAgent:
         self.cluster_qtable = QLearningTable(self.avail_actions["avail_cluster_strengths"], learning_rate, reward_decay)
         # self.cluster_qtable = pd.DataFrame(columns=self.avail_actions["avail_cluster_strengths"], dtype=np.float64)
         self.combat_qtable_dict = {}
+        self.sub_clusters_qtable_tag = None
 
         self.previous_combat_state = {}
         self.previous_combat_action = {}

@@ -25,15 +25,19 @@ class CustomController:
         # Only select actions for the selected batch elements in bs
         avail_actions = ep_batch["avail_actions"][bs][t_ep]
         state_im = ep_batch["im_state"][bs][t_ep]
-        cluster_item = self.agent.cluster_qtable.choose_action(state_im, self.get_epsilon(t_env, test_mode))
+        cluster_action = self.agent.cluster_qtable.choose_action(state_im, self.get_epsilon(t_env, test_mode))
         env.cluster.update(env.agents, env.enemies)
-        cluster_result = getattr(env.cluster, cluster_item)()
+        cluster_result = getattr(env.cluster, cluster_action)()
         self.agent.update_combat_qtable_dict(cluster_result)
+        self.agent.sub_clusters_qtable_tag = (cluster_result[0], cluster_result[1])
+        state_clu = env.get_clu_state(cluster_result)
+        combat_action = (self.agent.combat_qtable_dict[self.agent.sub_clusters_qtable_tag]
+                              .choose_action(state_clu, self.get_epsilon(t_env, test_mode)))
         # model = self.get_model()
         # agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
         # chosen_actions = self.action_selector.select_action(model, cur_state, avail_actions, t_env, test_mode=test_mode)
-        # return chosen_actions
-        return getattr(env, "action_ATK_clu_nearest")(cluster_result)
+        # return getattr(env, combat_action)(cluster_result)
+        return getattr(env, "action_DEF_nearest")(cluster_result)
 
     def get_model(self):
         model = {
