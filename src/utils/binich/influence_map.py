@@ -6,7 +6,6 @@ import random
 import cv2
 import matplotlib.pyplot as plt
 
-from src.utils.binich.unit_utils import UnitUtils
 
 class InfluenceMap:
     def __init__(self, unit_scale: int):
@@ -159,7 +158,6 @@ class InfluenceMap:
         return top, bottom, left, right
 
     def get_im_window(self):
-        # u_util = UnitUtils()
         a = self.featured_agents.copy()
         e = self.featured_enemies.copy()
         im = self.calculate_influence_map(a, e)
