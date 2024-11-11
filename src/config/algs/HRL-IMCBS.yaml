@@ -25,3 +25,6 @@ name: "HRL-IMCBS"
 # Using custom controller and scheme
 mac: "custom_controller"
 custom_scheme: True
+
+short_reward: True
+

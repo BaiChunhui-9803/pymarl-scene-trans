@@ -4,10 +4,10 @@ import numpy as np
 import math
 
 cluster_strengths = {
-    "k_means_000": 0.0,
-    "k_means_025": 0.25,
-    "k_means_050": 0.5,
-    "k_means_075": 0.75,
+    # "k_means_000": 0.0,
+    # "k_means_025": 0.25,
+    # "k_means_050": 0.5,
+    # "k_means_075": 0.75,
     "k_means_100": 1.0
 }
 

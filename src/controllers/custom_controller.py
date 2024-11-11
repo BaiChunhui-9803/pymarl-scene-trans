@@ -37,7 +37,7 @@ class CustomController:
         # agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
         # chosen_actions = self.action_selector.select_action(model, cur_state, avail_actions, t_env, test_mode=test_mode)
         # return getattr(env, combat_action)(cluster_result)
-        return getattr(env, "action_DEF_nearest")(cluster_result)
+        return getattr(env, "action_MIX_lure_weakest")(cluster_result)
 
     def get_model(self):
         model = {
