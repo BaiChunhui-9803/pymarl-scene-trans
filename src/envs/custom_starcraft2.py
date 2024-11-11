@@ -11,6 +11,8 @@ from s2clientprotocol import debug_pb2 as d_pb
 
 from src.utils.binich.influence_map import InfluenceMap
 from src.utils.binich.cluster import Cluster, distance
+import src.utils.binich.math_utils as math_utils
+import src.utils.binich.reward_utils as reward_utils
 
 import numpy as np
 from absl import logging
@@ -39,9 +41,9 @@ scripts = {
     "action_ATK_threatening": 5,
     "action_DEF_nearest": 6,
     "action_DEF_clu_nearest": 7,
-    # "action_MIX_gather": 7,
-    # "action_MIX_lure": 8,
-    # "action_MIX_lure_2": 9,
+    "action_MIX_gather": 8,
+    "action_MIX_lure_remotest": 9,
+    "action_MIX_lure_weakest": 10,
 }
 
 
@@ -54,7 +56,7 @@ class CustomStarCraft2Env(StarCraft2Env):
         self.sorted_enemies = None
         self.featured_agents = None
         self.featured_enemies = None
-        self.window_size = (1280, 960)
+        self.window_size = (960, 720)
 
         self.im = InfluenceMap(self.n_agents)
         self.cluster = Cluster(self.n_agents)
@@ -155,7 +157,6 @@ class CustomStarCraft2Env(StarCraft2Env):
 
 
     def get_nearest_weakest_enemy(self, mp, enemies):
-        # 找出最弱的、最近的敌人，最弱的为第一优先级
         min_dis = 99.
         min_tag = -1
         min_health = 9999
@@ -215,6 +216,12 @@ class CustomStarCraft2Env(StarCraft2Env):
             position = tuple(map(lambda x, y: x + y, position, (unit['x'], unit['y'])))
         return (position[0] / len(units), position[1] / len(units))
 
+    def get_center_position_point_param(self, alliance, units):
+        position = (0, 0)
+        if alliance == 'Self':
+            for unit in units:
+                position = tuple(map(lambda x, y: x + y, position, (unit[1], unit[2])))
+        return (position[0] / len(units), position[1] / len(units))
 
     def action_ATK_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
@@ -323,8 +330,225 @@ class CustomStarCraft2Env(StarCraft2Env):
             return action_list
         return None
 
+    def action_DEF_clu_nearest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        if len(units) > 0 and len(enemies) > 0:
+            for clu in cluster_result[2]:
+                clu_mp = clu[1]
+                clu_enemy_tag_list = [self.get_nearest_enemy((item[1], item[2]), enemies) for item in clu[4]]
+                clu_ep_lst = [(item[1], item[2]) for item in enemies if item[0] in clu_enemy_tag_list]
+                clu_ep = tuple(sum(x) / len(clu_ep_lst) for x in zip(*clu_ep_lst))
+                vec = tuple(3 * x - 3 * y for x, y in zip(clu_mp, clu_ep))
+                clu_tp = tuple(map(lambda x, y: min(max((x + y), 0), 128), clu_mp, vec))
+                if len(clu) > 0:
+                    for unit in clu[4]:
+                        action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                            ability_id=actions["move"],
+                            target_world_space_pos=sc_common.Point2D(x=clu_tp[0], y=clu_tp[1]),
+                            unit_tags=[unit[0]],
+                            queue_command=False,
+                        ))))
+            return action_list
+        return None
+
+    # def action_MIX_gather(self, cluster_result):
+    #     self.update(self.agents, self.enemies)
+    #     units = self.featured_agents
+    #     enemies = self.featured_enemies
+    #     action_list = []
+    #     mc = math_utils.find_min_circle([(unit[1], unit[2]) for unit in units])
+    #     ec = math_utils.find_min_circle([(enemy[1], enemy[2]) for enemy in enemies])
+    #     target = sc_common.Point2D(
+    #         x=mc.x, y=mc.y
+    #         # x=3*mc.x - 2*ec.x, y=3*mc.x- 2*ec.x
+    #     )
+    #     if len(units) > 0 and len(enemies) > 0:
+    #         for unit in units:
+    #             action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+    #                 ability_id=actions["move"],
+    #                 target_world_space_pos=target,
+    #                 unit_tags=[unit[0]],
+    #                 queue_command=False,
+    #             ))))
+    #         return action_list
+    #     return None
+
+    def action_MIX_gather(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        mc = math_utils.find_min_circle([(unit[1], unit[2]) for unit in units])
+        if len(units) > 0 and len(enemies) > 0:
+            for clu in cluster_result[2]:
+                if clu[3] < 0.6:
+                    action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                        ability_id=actions["move"],
+                        target_world_space_pos=sc_common.Point2D(x=clu[1][0], y=clu[1][1]),
+                        unit_tags=[item[0] for item in clu[4]],
+                        queue_command=False,
+                    ))))
+                else:
+                    for unit in clu[4]:
+                        enemy = self.get_nearest_enemy_pos((unit[1], unit[2]), enemies)
+                        target = sc_common.Point2D(
+                            x=enemy[0], y=enemy[1]
+                        )
+                        action_list.append(
+                            sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                                ability_id=actions["move"],
+                                target_world_space_pos=target,
+                                unit_tags=[unit[0]],
+                                queue_command=False,
+                            ))))
+            return action_list
+        return None
+
+    def action_MIX_lure_remotest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        mp = self.get_center_position('Self')
+        ep = self.get_center_position('Enemy')
+        if len(units) > 0 and len(enemies) > 0:
+            separation_unit_list = []
+            for clu in cluster_result[2]:
+                if clu[2] < 0.5:
+                    for unit in clu[4]:
+                        separation_unit_list.append((unit, distance((unit[1], unit[2]), ep)))
+            if len(separation_unit_list) > 1:
+                sorted_list = sorted(separation_unit_list, key=lambda x: x[1])
+                except_unit_tag = sorted_list[0][0][0]
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_world_space_pos=sc_common.Point2D(x=ep[0], y=ep[1]),
+                    unit_tags=[except_unit_tag],
+                    queue_command=False,
+                ))))
+            else:
+                except_unit_tag = self.get_nearest_enemy(ep, units)
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_world_space_pos=sc_common.Point2D(x=ep[0], y=ep[1]),
+                    unit_tags=[except_unit_tag],
+                    queue_command=False,
+                ))))
+            units.remove([item for item in units if item[0] == except_unit_tag][0])
+            mp_new = self.get_center_position_point_param('Self', units)
+            for unit in units:
+                if unit[0] != except_unit_tag:
+                    action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                        ability_id=actions["move"],
+                        target_world_space_pos=sc_common.Point2D(x=mp_new[0], y=mp_new[1]),
+                        unit_tags=[unit[0]],
+                        queue_command=False,
+                    ))))
+            return action_list
+        return None
+
+    def action_MIX_lure_weakest(self, cluster_result):
+        self.update(self.agents, self.enemies)
+        units = self.featured_agents
+        enemies = self.featured_enemies
+        action_list = []
+        mp = self.get_center_position('Self')
+        ep = self.get_center_position('Enemy')
+        if len(units) > 0 and len(enemies) > 0:
+            # swap param_1 and param_2 to get the nearest weakest unit to the enemy
+            lure_uid = self.get_nearest_weakest_enemy(ep, units)
+            back_pt = ((6/5*mp[0]-1/5*ep[0]), (6/5*mp[1]-1/5*ep[1]))
+            if lure_uid > 0:
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_unit_tag=self.get_nearest_weakest_enemy(mp, enemies),
+                    unit_tags=[lure_uid],
+                    queue_command=False,
+                ))))
+            if [item[0] for item in units if item[0] != lure_uid]:
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_unit_tag=self.get_nearest_weakest_enemy(mp, enemies),
+                    unit_tags=[item[0] for item in units if item[0] != lure_uid],
+                    queue_command=True,
+                ))))
+                action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
+                    ability_id=actions["move"],
+                    target_world_space_pos=sc_common.Point2D(x=back_pt[0], y=back_pt[1]),
+                    unit_tags=[item[0] for item in units if item[0] != lure_uid],
+                    queue_command=False,
+                ))))
+            return action_list
+        return None
+
+
+    # TODO 重写reward_battle()，使其支持多目标
+    def reward_battle(self, args=None):
+        if self.reward_sparse:
+            return 0
+
+        reward = 0
+        delta_deaths = 0
+        delta_ally = 0
+        delta_enemy = 0
+
+        neg_scale = self.reward_negative_scale
+
+        # update deaths
+        for al_id, al_unit in self.agents.items():
+            if not self.death_tracker_ally[al_id]:
+                # did not die so far
+                prev_health = (
+                        self.previous_ally_units[al_id].health
+                        + self.previous_ally_units[al_id].shield
+                )
+                if al_unit.health == 0:
+                    # just died
+                    self.death_tracker_ally[al_id] = 1
+                    if not self.reward_only_positive:
+                        delta_deaths -= self.reward_death_value * neg_scale
+                    delta_ally += prev_health * neg_scale
+                else:
+                    # still alive
+                    delta_ally += neg_scale * (
+                            prev_health - al_unit.health - al_unit.shield
+                    )
+
+        for e_id, e_unit in self.enemies.items():
+            if not self.death_tracker_enemy[e_id]:
+                prev_health = (
+                    self.previous_enemy_units[e_id].health
+                    + self.previous_enemy_units[e_id].shield
+                )
+                if e_unit.health == 0:
+                    self.death_tracker_enemy[e_id] = 1
+                    delta_deaths += self.reward_death_value
+                    delta_enemy += prev_health
+                else:
+                    delta_enemy += prev_health - e_unit.health - e_unit.shield
+
+        if args.short_reward:
+            short_reward = reward_utils.ShortTermReward()
+            reward = short_reward.short_reward(self.agents,
+                                               self.enemies,
+                                               self.previous_ally_units,
+                                               self.previous_enemy_units,
+                                               self.cluster.get_shoot_range())
+        else:
+            reward = delta_ally - delta_enemy - delta_deaths
+        return reward
+
+
+
+
+
+
+
     # TODO 重写step()
-    def step(self, action_list):
+    def step(self, action_list, args=None):
 
         req_actions = sc_pb.RequestAction(actions=action_list)
         try:
@@ -342,7 +566,7 @@ class CustomStarCraft2Env(StarCraft2Env):
         game_end_code = self.update_units()
 
         terminated = False
-        reward = self.reward_battle()
+        reward = self.reward_battle(args)
         info = {"battle_won": False}
 
         # count units that are still alive
