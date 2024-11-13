@@ -1,5 +1,7 @@
-import datetime
 import os
+os.environ["OMP_NUM_THREADS"] = '1'
+
+import datetime
 import pprint
 import time
 import threading
@@ -18,6 +20,7 @@ from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
 
 from components.custom_episode_buffer import CustomReplayBuffer
+
 
 
 def run(_run, _config, _log):
@@ -113,11 +116,16 @@ def run_sequential(args, logger):
         }
     else:
         scheme = {
-            "im_state": {},
+            "upper_state": {},
             "original_state": {},
             "avail_actions": runner.env.get_avail_actions(),
-            "actions": {},
-            "reward": {},
+
+            "upper_action": {},
+            "lower_id": {},
+            "lower_state": {},
+            "lower_action": {},
+            "global_reward": {},
+            "short_reward": {},
             "terminated": {},
         }
         groups = {
@@ -197,17 +205,21 @@ def run_sequential(args, logger):
         episode_batch = runner.run(test_mode=False)
         buffer.insert_episode_batch(episode_batch)
 
-        if buffer.can_sample(args.batch_size):
-            episode_sample = buffer.sample(args.batch_size)
+        if args.runner == "episode_cbs":
+            if buffer.can_sample(args.batch_size):
+                episode_sample = buffer.sample(args.batch_size)
+                # TODO train the controller
+                learner.train(episode_sample, runner.t_env, episode)
+        else:
+            if buffer.can_sample(args.batch_size):
+                episode_sample = buffer.sample(args.batch_size)
+                # Truncate batch to only filled timesteps
+                max_ep_t = episode_sample.max_t_filled()
+                episode_sample = episode_sample[:, :max_ep_t]
+                if episode_sample.device != args.device:
+                    episode_sample.to(args.device)
+                learner.train(episode_sample, runner.t_env, episode)
 
-            # Truncate batch to only filled timesteps
-            max_ep_t = episode_sample.max_t_filled()
-            episode_sample = episode_sample[:, :max_ep_t]
-
-            if episode_sample.device != args.device:
-                episode_sample.to(args.device)
-
-            learner.train(episode_sample, runner.t_env, episode)
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)

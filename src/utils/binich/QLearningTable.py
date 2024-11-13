@@ -11,12 +11,12 @@ class QLearningTable:
 
     def choose_action(self, state, e_greedy=1):
         self.check_state_exist(state)
-        if np.random.uniform() < e_greedy:
+        if np.random.uniform() > e_greedy:
             state_action = self.q_table.loc[state, :]
             action = np.random.choice(
                 state_action[state_action == np.max(state_action)].index)
         else:
-            action = np.random.choice(self.actions)
+            action = np.random.choice(list(self.actions.keys()))
         return action
 
     def learn(self, s, a, r, s_):

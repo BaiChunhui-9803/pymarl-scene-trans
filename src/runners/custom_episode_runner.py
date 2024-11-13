@@ -3,7 +3,9 @@ from functools import partial
 from components.custom_episode_buffer import CustomEpisodeCBSBatch
 import numpy as np
 
-# from src.utils.binich import influence_map
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 
 class EpisodeRunner:
@@ -60,7 +62,7 @@ class EpisodeRunner:
             pre_transition_data = {
                 # binich - self.env.get_state() -> self.env.get_im_state()
                 # using influence map hashing state
-                "im_state": self.env.get_im_state(),
+                "upper_state": self.env.get_im_state(),
                 # binich - Preserved the original state.
                 "original_state": self.env.get_original_state(),
                 "avail_actions": self.env.get_avail_actions(),
@@ -71,14 +73,18 @@ class EpisodeRunner:
 
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch of size 1
-            actions = self.controller.select_actions(self.env, self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
+            actions, multi_action_data = self.controller.select_actions(self.env, self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
 
-            reward, terminated, env_info = self.env.step(actions, self.args)
-            episode_return += reward
+            global_reward, short_reward, terminated, env_info = self.env.step(actions, self.args)
+            episode_return += global_reward
 
             post_transition_data = {
-                "actions": actions,
-                "reward": reward,
+                "upper_action": multi_action_data["upper_action"],
+                "lower_id": multi_action_data["lower_id"],
+                "lower_state": multi_action_data["lower_state"],
+                "lower_action": multi_action_data["lower_action"],
+                "global_reward": global_reward,
+                "short_reward": short_reward,
                 "terminated": terminated != env_info.get("episode_limit", False),
             }
 
@@ -87,15 +93,22 @@ class EpisodeRunner:
             self.t += 1
 
         last_data = {
-            "state": [self.env.get_state()],
-            "avail_actions": [self.env.get_avail_actions()],
-            "obs": [self.env.get_obs()]
+            "upper_state": self.env.get_im_state(),
+            "original_state": self.env.get_original_state(),
+            "avail_actions": self.env.get_avail_actions(),
         }
         self.batch.update(last_data, ts=self.t)
 
         # Select actions in the last stored state
-        actions = self.controller.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
-        self.batch.update({"actions": actions}, ts=self.t)
+        actions, multi_action_data = self.controller.select_actions(self.env, self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
+
+        last_transition_data = {
+            "upper_action": multi_action_data["upper_action"],
+            "lower_id": multi_action_data["lower_id"],
+            "lower_state": multi_action_data["lower_state"],
+            "lower_action": multi_action_data["lower_action"],
+        }
+        self.batch.update(last_transition_data, ts=self.t)
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
@@ -107,14 +120,18 @@ class EpisodeRunner:
         if not test_mode:
             self.t_env += self.t
 
+        plt.close()
+        matplotlib.pyplot.figure().clear()
+        matplotlib.pyplot.close()
+
         cur_returns.append(episode_return)
 
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
             self._log(cur_returns, cur_stats, log_prefix)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
             self._log(cur_returns, cur_stats, log_prefix)
-            if hasattr(self.controller.action_selector, "epsilon"):
-                self.logger.log_stat("epsilon", self.controller.action_selector.epsilon, self.t_env)
+            if hasattr(self.controller, "get_epsilon"):
+                self.logger.log_stat("epsilon", self.controller.get_epsilon(self.t_env), self.t_env)
             self.log_train_stats_t = self.t_env
 
         return self.batch

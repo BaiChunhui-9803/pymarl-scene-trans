@@ -99,6 +99,7 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     # binich - custom method for getting state using influence map hashing
     def get_im_state(self):
+        self.im.init_map()
         self.im.update(self.agents, self.enemies)
         im_state = self.im.get_im_hash()
         return im_state
@@ -490,7 +491,7 @@ class CustomStarCraft2Env(StarCraft2Env):
         if self.reward_sparse:
             return 0
 
-        reward = 0
+        global_reward, short_reward = 0, 0
         delta_deaths = 0
         delta_ally = 0
         delta_enemy = 0
@@ -531,15 +532,21 @@ class CustomStarCraft2Env(StarCraft2Env):
                     delta_enemy += prev_health - e_unit.health - e_unit.shield
 
         if args.short_reward:
-            short_reward = reward_utils.ShortTermReward()
-            reward = short_reward.short_reward(self.agents,
+            # sum_health_agents = sum([agent.health for agent in self.agents.values()])
+            # sum_health_enemies = sum([enemy.health for enemy in self.enemies.values()])
+            # prev_sum_health_agents = sum([agent.health for agent in self.previous_ally_units.values()])
+            # prev_sum_health_enemies = sum([enemy.health for enemy in self.previous_enemy_units.values()])
+            global_reward = delta_enemy - delta_ally
+            reward = reward_utils.ShortTermReward()
+            short_reward = reward.short_reward(self.agents,
                                                self.enemies,
                                                self.previous_ally_units,
                                                self.previous_enemy_units,
                                                self.cluster.get_shoot_range())
         else:
             reward = delta_ally - delta_enemy - delta_deaths
-        return reward
+            return reward
+        return global_reward, short_reward
 
 
 
@@ -566,7 +573,7 @@ class CustomStarCraft2Env(StarCraft2Env):
         game_end_code = self.update_units()
 
         terminated = False
-        reward = self.reward_battle(args)
+        global_reward, short_reward = self.reward_battle(args)
         info = {"battle_won": False}
 
         # count units that are still alive
@@ -600,15 +607,15 @@ class CustomStarCraft2Env(StarCraft2Env):
                 self.win_counted = True
                 info["battle_won"] = True
                 if not self.reward_sparse:
-                    reward += self.reward_win
+                    global_reward += self.reward_win
                 else:
-                    reward = 1
+                    global_reward = 1
             elif game_end_code == -1 and not self.defeat_counted:
                 self.defeat_counted = True
                 if not self.reward_sparse:
-                    reward += self.reward_defeat
+                    global_reward += self.reward_defeat
                 else:
-                    reward = -1
+                    global_reward = -1
 
         elif self._episode_steps >= self.episode_limit:
             # Episode limit reached
@@ -619,17 +626,17 @@ class CustomStarCraft2Env(StarCraft2Env):
             self.timeouts += 1
 
         if self.debug:
-            logging.debug("Reward = {}".format(reward).center(60, "-"))
+            logging.debug("Reward = {}".format(global_reward).center(60, "-"))
 
         if terminated:
             self._episode_count += 1
 
         if self.reward_scale:
-            reward /= self.max_reward / self.reward_scale_rate
+            global_reward /= self.max_reward / self.reward_scale_rate
 
-        self.reward = reward
+        self.reward = global_reward
 
-        return reward, terminated, info
+        return global_reward, short_reward, terminated, info
 
 
 

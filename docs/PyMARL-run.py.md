@@ -227,3 +227,26 @@ def run_sequential(args, logger):
 >   
 >   以`test_mode=True`模式，循环执行 `n_test_runs` 次测试运行
 
+
+
+
+
+
+
+
+
+
+
+
+
+> [!IMPORTANT]
+>
+> **在Python脚本中设置环境变量**：您可以在Python脚本的开头添加以下两行代码来设置环境变量`OMP_NUM_THREADS`为1，这样可以限制MKL库使用的线程数，避免内存泄漏问题。
+>
+> ```python
+> import os
+> os.environ["OMP_NUM_THREADS"] = '1'
+> ```
+>
+> 
+

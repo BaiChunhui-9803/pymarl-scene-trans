@@ -4,7 +4,9 @@ import seaborn as sns
 from PIL import Image
 import random
 import cv2
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use("Agg")
 
 
 class InfluenceMap:
@@ -23,9 +25,10 @@ class InfluenceMap:
         self.map_boundary_with = 2
         # the influence list of player1 and player2
         # self.player1_influence_list = [16, 9, 4, 1]
-        # self.player2_influence_list = [-16, -9, -4, -1]
-        self.player1_influence_list = [160, 90, 40, 10]
-        self.player2_influence_list = [-160, -90, -40, -10]
+        self.player1_influence_list = [25]
+        self.player2_influence_list = [-16, -9, -4, -1]
+        # self.player1_influence_list = [160, 90, 40, 10]
+        # self.player2_influence_list = [-160, -90, -40, -10]
         # the max/min influence value
         self.max_influence = 16 * unit_scale
         self.min_influence = -16 * unit_scale
@@ -36,10 +39,15 @@ class InfluenceMap:
     def update(self, agents, enemies):
         self.agents = agents
         self.enemies = enemies
-        self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y} for agent in self.agents.values()]
-        self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y} for enemy in self.enemies.values()]
-        self.featured_agents = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_agents], key=lambda x: x[0])
-        self.featured_enemies = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_enemies], key=lambda x: x[0])
+        self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y, 'health': agent.health}
+                              for agent in self.agents.values()]
+        self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y, 'health': enemy.health}
+                               for enemy in self.enemies.values()]
+        self.featured_agents = sorted([(item['tag'], item['x'], item['y'], item['health']) for item in self.sorted_agents], key=lambda x: x[0])
+        self.featured_enemies = sorted([(item['tag'], item['x'], item['y'], item['health']) for item in self.sorted_enemies], key=lambda x: x[0])
+
+    def init_map(self):
+        self.influence_map = np.zeros((int((pow(self.map_resolution, 1))), int((pow(self.map_resolution, 1)))))
 
 
 
@@ -126,6 +134,8 @@ class InfluenceMap:
         return self.make_regalur_image(img)
 
     def calculate_influence_map(self, player1_unit_list, player2_unit_list):
+        player1_unit_list = [unit for unit in player1_unit_list if unit[3] > 0]
+        player2_unit_list = [unit for unit in player2_unit_list if unit[3] > 0]
         for player1_unit in player1_unit_list:
             for index in range(len(self.player1_influence_list)):
                 self.ripple(index, player1_unit, 'Self')

@@ -2,7 +2,7 @@ env: custom_sc2
 
 env_args:
   continuing_episode: False
-  difficulty: "7"
+  difficulty: "1"
   game_version: null
   map_name: "3m"
   move_amount: 2
@@ -15,7 +15,7 @@ env_args:
   obs_timestep_number: False
   reward_death_value: 10
   reward_defeat: 0
-  reward_negative_scale: 0.5
+  reward_negative_scale: 1
   reward_only_positive: True
   # binich
   reward_scale: False
@@ -33,9 +33,9 @@ env_args:
   debug: False
 
 test_greedy: True
-test_nepisode: 32
-test_interval: 10000
-log_interval: 10000
-runner_log_interval: 10000
-learner_log_interval: 10000
+test_nepisode: 1
+test_interval: 1000
+log_interval: 1000
+runner_log_interval: 1000
+learner_log_interval: 1000
 t_max: 2050000

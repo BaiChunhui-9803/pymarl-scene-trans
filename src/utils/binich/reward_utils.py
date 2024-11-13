@@ -19,8 +19,12 @@ class ShortTermReward:
                     self.r_fire_coverage, self.r_covered_in_fire)
 
     def short_reward(self, agents, enemies, previous_ally_units, previous_enemy_units, shoot_range):
-        self.r_kill = (len(previous_enemy_units) - len(enemies)) * 5
-        self.r_fall = (len(previous_ally_units) - len(agents)) * -5
+        pre_enemy_units_alive = [enemy for enemy in previous_enemy_units.values() if enemy.health > 0]
+        cur_enemy_units_alive = [enemy for enemy in enemies.values() if enemy.health > 0]
+        pre_ally_units_alive = [agent for agent in previous_ally_units.values() if agent.health > 0]
+        cur_ally_units_alive = [agent for agent in agents.values() if agent.health > 0]
+        self.r_kill = (len(pre_enemy_units_alive) - len(cur_enemy_units_alive)) * 10
+        self.r_fall = (len(pre_ally_units_alive) - len(cur_ally_units_alive)) * -10
 
         pre_health_ally = sum([agent.health for agent in previous_ally_units.values()])
         cur_health_ally = sum([agent.health for agent in agents.values()])
@@ -40,16 +44,16 @@ class ShortTermReward:
         max_pre_enemy_attacks = 0
         max_pre_ally_attacks = 0
 
-        for enemy in previous_enemy_units.values():
+        for enemy in pre_enemy_units_alive:
             enemy_attacks = 0
-            for ally in previous_ally_units.values():
+            for ally in pre_ally_units_alive:
                 distance = ((enemy.pos.x - ally.pos.x) ** 2 + (enemy.pos.y - ally.pos.y) ** 2) ** 0.5
                 if distance <= shoot_range:
                     enemy_attacks += 1
             max_pre_enemy_attacks = max(max_pre_enemy_attacks, enemy_attacks)
-        for ally in previous_ally_units.values():
+        for ally in pre_ally_units_alive:
             ally_attacks = 0
-            for enemy in previous_enemy_units.values():
+            for enemy in pre_enemy_units_alive:
                 distance = ((ally.pos.x - enemy.pos.x) ** 2 + (ally.pos.y - enemy.pos.y) ** 2) ** 0.5
                 if distance <= shoot_range:
                     ally_attacks += 1
@@ -58,16 +62,16 @@ class ShortTermReward:
         max_cur_enemy_attacks = 0
         max_cur_ally_attacks = 0
 
-        for enemy in enemies.values():
+        for enemy in cur_enemy_units_alive:
             enemy_attacks = 0
-            for ally in agents.values():
+            for ally in cur_ally_units_alive:
                 distance = ((enemy.pos.x - ally.pos.x) ** 2 + (enemy.pos.y - ally.pos.y) ** 2) ** 0.5
                 if distance <= shoot_range:
                     enemy_attacks += 1
             max_cur_enemy_attacks = max(max_cur_enemy_attacks, enemy_attacks)
-        for ally in agents.values():
+        for ally in cur_ally_units_alive:
             ally_attacks = 0
-            for enemy in enemies.values():
+            for enemy in cur_enemy_units_alive:
                 distance = ((ally.pos.x - enemy.pos.x) ** 2 + (ally.pos.y - enemy.pos.y) ** 2) ** 0.5
                 if distance <= shoot_range:
                     ally_attacks += 1
