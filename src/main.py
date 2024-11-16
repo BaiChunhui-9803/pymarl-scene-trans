@@ -28,6 +28,7 @@ results_path = os.path.join(dirname(dirname(abspath(__file__))), "results")
 # known to have a memory leak on Windows "
 os.environ["OMP_NUM_THREADS"] = "1"
 
+
 @ex.main
 def my_main(_run, _config, _log):
     # Setting the random seed throughout the modules

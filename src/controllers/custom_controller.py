@@ -30,14 +30,9 @@ class CustomController:
         cluster_result = getattr(env.cluster, cluster_action)()
         self.agent.update_combat_qtable_dict(cluster_result)
         self.agent.sub_clusters_qtable_tag = (cluster_result[0], cluster_result[1])
-
         state_clu = env.get_clu_state(cluster_result)
         combat_action = (self.agent.combat_qtable_dict[self.agent.sub_clusters_qtable_tag]
-                              .choose_action(state_clu, self.get_epsilon(t_env, test_mode)))
-        # model = self.get_model()
-        # agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
-        # chosen_actions = self.action_selector.select_action(model, cur_state, avail_actions, t_env, test_mode=test_mode)
-
+                         .choose_action(state_clu, self.get_epsilon(t_env, test_mode)))
         multi_action = {
             "upper_state": state_im,
             "upper_action": cluster_action,

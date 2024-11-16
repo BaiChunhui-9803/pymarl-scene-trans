@@ -23,11 +23,13 @@ class Cluster:
         self.sorted_enemies = None
         self.featured_agents = None
         self.featured_enemies = None
+        self.alive_agents = None
+        self.alive_enemies = None
         self.name = None
         self.n_agents = n_agents
         self.cluster_strengths = cluster_strengths
 
-        self._unit_shoot_range = 6
+        self._unit_shoot_range = 5
 
     def get_shoot_range(self):
         return self._unit_shoot_range
@@ -35,26 +37,32 @@ class Cluster:
     def update(self, agents, enemies):
         self.agents = agents
         self.enemies = enemies
-        self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y} for agent in self.agents.values()]
-        self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y} for enemy in self.enemies.values()]
-        self.featured_agents = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_agents], key=lambda x: x[0])
-        self.featured_enemies = sorted([(item['tag'], item['x'], item['y']) for item in self.sorted_enemies], key=lambda x: x[0])
+        self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y, 'health': agent.health}
+                              for agent in self.agents.values()]
+        self.sorted_enemies = [{'tag': enemy.tag, 'x': enemy.pos.x, 'y': enemy.pos.y, 'health': enemy.health}
+                               for enemy in self.enemies.values()]
+        self.featured_agents = sorted(
+            [(item['tag'], item['x'], item['y'], item['health']) for item in self.sorted_agents], key=lambda x: x[0])
+        self.featured_enemies = sorted(
+            [(item['tag'], item['x'], item['y'], item['health']) for item in self.sorted_enemies], key=lambda x: x[0])
+        self.alive_agents = [agent for agent in self.featured_agents if agent[3] > 0]
+        self.alive_enemies = [enemy for enemy in self.featured_enemies if enemy[3] > 0]
 
     def kmeans(self, k):
         x = []
-        for point in self.featured_agents:
+        for point in self.alive_agents:
             x.append(point[1:])
         kmeans = KMeans(n_clusters=k)
         kmeans.fit(x)
         labels = kmeans.predict(x)
         clustered_points = []
-        for i in range(len(self.featured_agents)):
-            clustered_points.append((self.featured_agents[i] + (labels[i],)))
+        for i in range(len(self.alive_agents)):
+            clustered_points.append((self.alive_agents[i] + (labels[i],)))
         self.cluster_data = clustered_points
         return self.cluster_data
 
     def k_means_000(self):
-        units = self.featured_agents
+        units = self.alive_agents
         clu_number = len(units)
         clu_lists = [clu_number, 0., []]
         if clu_number > 0:
@@ -67,7 +75,7 @@ class Cluster:
         return clu_lists
 
     def k_means_025(self):
-        units = self.featured_agents
+        units = self.alive_agents
         clu_number = 1
         clu_lists = [clu_number, 0., []]
         if len(units) * 0.25 > 1:
@@ -91,7 +99,7 @@ class Cluster:
         return clu_lists
 
     def k_means_050(self):
-        units = self.featured_agents
+        units = self.alive_agents
         clu_number = 1
         clu_lists = [clu_number, 0., []]
         if len(units) * 0.5 > 1:
@@ -115,7 +123,7 @@ class Cluster:
         return clu_lists
 
     def k_means_075(self):
-        units = self.featured_agents
+        units = self.alive_agents
         clu_number = 1
         clu_lists = [clu_number, 0., []]
         if len(units) * 0.5 > 1:
@@ -139,7 +147,7 @@ class Cluster:
         return clu_lists
 
     def k_means_100(self):
-        units = self.featured_agents
+        units = self.alive_agents
         clu_number = 1
         clu_variance = 0.
         clu_lists = [clu_number, clu_variance, []]

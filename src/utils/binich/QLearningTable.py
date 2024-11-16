@@ -23,7 +23,10 @@ class QLearningTable:
         self.check_state_exist(s_)
         q_predict = self.q_table.loc[s, a]
         if s_ != 'terminal':
-            q_target = r + self.reward_decay * self.q_table.loc[s_, :].max()
+            try:
+                q_target = r + self.reward_decay * self.q_table.loc[s_, :].max()
+            except:
+                print('s_:', s_)
         else:
             q_target = r
         self.q_table.loc[s, a] += self.learning_rate * (q_target - q_predict)

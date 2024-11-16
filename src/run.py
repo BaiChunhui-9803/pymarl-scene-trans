@@ -20,6 +20,7 @@ from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
 
 from components.custom_episode_buffer import CustomReplayBuffer
+from components.custom_episode_buffer_single import CustomReplayBuffer_simgle
 
 
 
@@ -50,7 +51,7 @@ def run(_run, _config, _log):
         logger.setup_tb(tb_exp_direc)
 
     # binich sacred is on by default
-    # logger.setup_sacred(_run)
+    logger.setup_sacred(_run)
 
     # Run and train
     run_sequential(args=args, logger=logger)
@@ -115,10 +116,15 @@ def run_sequential(args, logger):
             "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
         }
     else:
+        if args.runner == "parallel_cbs":
+            runner.parent_conns[0].send(("get_avail_actions", None))
+            avail_actions = runner.parent_conns[0].recv()
+        elif args.runner == "episode_cbs":
+            avail_actions = runner.env.get_avail_actions()
         scheme = {
             "upper_state": {},
             "original_state": {},
-            "avail_actions": runner.env.get_avail_actions(),
+            "avail_actions": avail_actions,
 
             "upper_action": {},
             "lower_id": {},
@@ -134,8 +140,12 @@ def run_sequential(args, logger):
         preprocess = {}
 
     # binich - custom buffer
-    if args.runner == "episode_cbs":
+    if args.runner == "parallel_cbs":
         buffer = CustomReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
+                          preprocess=preprocess,
+                          device="cpu" if args.buffer_cpu_only else args.device)
+    elif args.runner == "episode_cbs":
+        buffer = CustomReplayBuffer_simgle(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
                           preprocess=preprocess,
                           device="cpu" if args.buffer_cpu_only else args.device)
     else:
@@ -154,6 +164,7 @@ def run_sequential(args, logger):
 
     if args.use_cuda:
         learner.cuda()
+        # runner.cuda()
 
     if args.checkpoint_path != "":
 
@@ -203,14 +214,24 @@ def run_sequential(args, logger):
 
         # Run for a whole episode at a time
         episode_batch = runner.run(test_mode=False)
-        buffer.insert_episode_batch(episode_batch)
+        # buffer.insert_episode_batch(episode_batch)
+        # 释放episode_batch
+        # del episode_batch
 
-        if args.runner == "episode_cbs":
+        if args.runner == "parallel_cbs":
+            buffer.insert_episode_batch(episode_batch)
+            del episode_batch
             if buffer.can_sample(args.batch_size):
                 episode_sample = buffer.sample(args.batch_size)
                 # TODO train the controller
-                learner.train(episode_sample, runner.t_env, episode)
+                learner.train(episode_sample, runner.t_env, episode, controller.agent)
+                del episode_sample
+        elif args.runner == "episode_cbs":
+            buffer.retain_filled(episode_batch)
+            learner.train(episode_batch, runner.t_env, episode, controller.agent)
+
         else:
+            buffer.insert_episode_batch(episode_batch)
             if buffer.can_sample(args.batch_size):
                 episode_sample = buffer.sample(args.batch_size)
                 # Truncate batch to only filled timesteps

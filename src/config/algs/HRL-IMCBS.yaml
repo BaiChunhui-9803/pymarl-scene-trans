@@ -7,9 +7,13 @@ epsilon_finish: 0.05
 epsilon_anneal_time: 50000
 
 runner: "episode_cbs"
+#runner: "parallel_cbs"
 
 batch_size: 1
-buffer_size: 1
+batch_size_run: 1
+buffer_size: 32
+buffer_cpu_only: False
+use_cuda: True
 
 ## update the target network every {} episodes
 #target_update_interval: 200

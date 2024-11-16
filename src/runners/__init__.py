@@ -9,3 +9,6 @@ REGISTRY["parallel"] = ParallelRunner
 # binich
 from .custom_episode_runner import EpisodeRunner
 REGISTRY["episode_cbs"] = EpisodeRunner
+
+from .custom_parallel_runner import ParallelRunner
+REGISTRY["parallel_cbs"] = ParallelRunner

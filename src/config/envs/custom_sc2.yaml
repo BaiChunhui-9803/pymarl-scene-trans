@@ -26,16 +26,16 @@ env_args:
   replay_prefix: ""
   state_last_action: True
   state_timestep_number: False
-  step_mul: 8
+  step_mul: 10
   seed: null
   heuristic_ai: True
   heuristic_rest: True
   debug: False
 
 test_greedy: True
-test_nepisode: 1
-test_interval: 1000
-log_interval: 1000
-runner_log_interval: 1000
-learner_log_interval: 1000
+test_nepisode: 8
+test_interval: 500
+log_interval: 500
+runner_log_interval: 500
+learner_log_interval: 500
 t_max: 2050000

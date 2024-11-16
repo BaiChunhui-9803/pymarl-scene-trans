@@ -56,6 +56,8 @@ class CustomStarCraft2Env(StarCraft2Env):
         self.sorted_enemies = None
         self.featured_agents = None
         self.featured_enemies = None
+        self.alive_agents = None
+        self.alive_enemies = None
         self.window_size = (960, 720)
 
         self.im = InfluenceMap(self.n_agents)
@@ -104,16 +106,41 @@ class CustomStarCraft2Env(StarCraft2Env):
         im_state = self.im.get_im_hash()
         return im_state
 
+    def get_state(self):
+        # 将敌我双方单位位置信息转为一个字符串
+        self.update(self.agents, self.enemies)
+        str_state = "M"
+        for agent in self.alive_agents:
+            str_state += str(int(agent[1])) + str(int(agent[2]))
+        str_state += "E"
+        for enemy in self.alive_enemies:
+            str_state += str(int(enemy[1])) + str(int(enemy[2]))
+        return str_state
+
     def get_clu_state(self, cluster_result):
         self.cluster.update(self.agents, self.enemies)
         cluster_list = [(item[2], item[3]) for item in cluster_result[2]]
         result = self.cluster.hashing(cluster_list)
         return result
 
+    def update_cluster(self):
+        self.cluster.update(self.agents, self.enemies)
+
+    def get_clu_result(self, cluster_action):
+        self.cluster.update(self.agents, self.enemies)
+        return getattr(self.cluster, cluster_action)()
+
     def get_original_state(self):
         self.im.update(self.agents, self.enemies)
         original_state = {'featured_agents': self.im.featured_agents, 'featured_enemies': self.im.featured_enemies}
         return original_state
+
+    def build_combat_action(self, build_action_data):
+        assert "lower_action" in build_action_data
+        assert "cluster_result" in build_action_data
+        combat_action = build_action_data["lower_action"]
+        cluster_result = build_action_data["cluster_result"]
+        return getattr(self, combat_action)(cluster_result)
 
     def update(self, agents, enemies):
         self.sorted_agents = [{'tag': agent.tag, 'x': agent.pos.x, 'y': agent.pos.y,
@@ -126,6 +153,8 @@ class CustomStarCraft2Env(StarCraft2Env):
                                        for item in self.sorted_agents], key=lambda x: x[0])
         self.featured_enemies = sorted([(item['tag'], item['x'], item['y'], item['health'], item['health_max'])
                                         for item in self.sorted_enemies], key=lambda x: x[0])
+        self.alive_agents = [agent for agent in self.featured_agents if agent[3] > 0]
+        self.alive_enemies = [enemy for enemy in self.featured_enemies if enemy[3] > 0]
 
     def get_avail_actions(self):
         avail_actions = {
@@ -208,9 +237,9 @@ class CustomStarCraft2Env(StarCraft2Env):
     def get_center_position(self, alliance):
         position = (0, 0)
         if alliance == 'Self':
-            units = self.sorted_agents
+            units = [unit for unit in self.sorted_agents if unit['health'] > 0]
         else:
-            units = self.sorted_enemies
+            units = [unit for unit in self.sorted_enemies if unit['health'] > 0]
         if len(units) == 0:
             return position
         for unit in units:
@@ -226,8 +255,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_ATK_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         if len(units) > 0 and len(enemies) > 0:
             for unit in units:
@@ -242,8 +271,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_ATK_clu_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mp = self.get_center_position('Self')
         if len(units) > 0 and len(enemies) > 0:
@@ -261,8 +290,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_ATK_nearest_weakest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mp = self.get_center_position('Self')
         if len(units) > 0 and len(enemies) > 0:
@@ -278,8 +307,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_ATK_clu_nearest_weakest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         if len(units) > 0 and len(enemies) > 0:
             for clu in cluster_result[2]:
@@ -296,8 +325,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_ATK_threatening(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mp = self.get_center_position('Self')
         if len(units) > 0 and len(enemies) > 0:
@@ -313,8 +342,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_DEF_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         if len(units) > 0 and len(enemies) > 0:
             for unit in units:
@@ -333,8 +362,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_DEF_clu_nearest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         if len(units) > 0 and len(enemies) > 0:
             for clu in cluster_result[2]:
@@ -379,8 +408,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_MIX_gather(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mc = math_utils.find_min_circle([(unit[1], unit[2]) for unit in units])
         if len(units) > 0 and len(enemies) > 0:
@@ -410,8 +439,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_MIX_lure_remotest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mp = self.get_center_position('Self')
         ep = self.get_center_position('Enemy')
@@ -439,7 +468,10 @@ class CustomStarCraft2Env(StarCraft2Env):
                     queue_command=False,
                 ))))
             units.remove([item for item in units if item[0] == except_unit_tag][0])
-            mp_new = self.get_center_position_point_param('Self', units)
+            if len(units) > 0:
+                mp_new = self.get_center_position_point_param('Self', units)
+            else:
+                mp_new = mp
             for unit in units:
                 if unit[0] != except_unit_tag:
                     action_list.append(sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=r_pb.ActionRawUnitCommand(
@@ -453,8 +485,8 @@ class CustomStarCraft2Env(StarCraft2Env):
 
     def action_MIX_lure_weakest(self, cluster_result):
         self.update(self.agents, self.enemies)
-        units = self.featured_agents
-        enemies = self.featured_enemies
+        units = self.alive_agents
+        enemies = self.alive_enemies
         action_list = []
         mp = self.get_center_position('Self')
         ep = self.get_center_position('Enemy')
@@ -564,7 +596,7 @@ class CustomStarCraft2Env(StarCraft2Env):
             self._obs = self._controller.observe()
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
-            return 0, True, {}
+            return 0, 0, True, {}
 
         self._total_steps += 1
         self._episode_steps += 1

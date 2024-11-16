@@ -30,7 +30,7 @@ class InfluenceMap:
         # self.player1_influence_list = [160, 90, 40, 10]
         # self.player2_influence_list = [-160, -90, -40, -10]
         # the max/min influence value
-        self.max_influence = 16 * unit_scale
+        self.max_influence = 25 * unit_scale
         self.min_influence = -16 * unit_scale
         # the influence map
         self.influence_map = np.zeros((int((pow(self.map_resolution, 1))), int((pow(self.map_resolution, 1)))))
@@ -59,19 +59,24 @@ class InfluenceMap:
         open_cv_image = open_cv_image[:, :, ::-1].copy()
         chans = cv2.split(open_cv_image)
         colors = ("b", "g", "r")
-        for (chans, color) in zip(chans, colors):
-            hist = cv2.calcHist([chans], [0], None, [8], [0, 256])
-        (b, g, r) = cv2.split(open_cv_image)
-        bh = cv2.equalizeHist(b)
-        gh = cv2.equalizeHist(g)
-        rh = cv2.equalizeHist(r)
-        equ2 = cv2.merge((bh, gh, rh))
+
+        for (chan, color) in zip(chans, colors):
+            hist = cv2.calcHist([chan], [0], None, [8], [0, 256])
+
+        b, g, r = chans
+        bH = cv2.equalizeHist(b)
+        gH = cv2.equalizeHist(g)
+        rH = cv2.equalizeHist(r)
+        equ2 = cv2.merge((bH, gH, rH))
+
         chans2 = cv2.split(equ2)
+
         r_list = []
         g_list = []
         b_list = []
-        for (chans2, color) in zip(chans2, colors):
-            hist = cv2.calcHist([chans2], [0], None, [8], [0, 256])
+
+        for (chan2, color) in zip(chans2, colors):
+            hist = cv2.calcHist([chan2], [0], None, [8], [0, 256])
             if color == 'r':
                 r_list = hist.T[0]
             if color == 'g':
@@ -79,17 +84,55 @@ class InfluenceMap:
             if color == 'b':
                 b_list = hist.T[0]
 
-        hash_string = ''
+        hashString = ''
         r_max = max(r_list, key=abs)
         g_max = max(g_list, key=abs)
         b_max = max(b_list, key=abs)
         for i in range(8):
-            hash_string += '{:01X}'.format(int(r_list[i] / r_max * 15.9))
+            hashString += '{:01X}'.format(int(r_list[i] / r_max * 15.9))
         for i in range(8):
-            hash_string += '{:01X}'.format(int(g_list[i] / g_max * 15.9))
+            hashString += '{:01X}'.format(int(g_list[i] / g_max * 15.9))
         for i in range(8):
-            hash_string += '{:01X}'.format(int(b_list[i] / b_max * 15.9))
-        return hash_string
+            hashString += '{:01X}'.format(int(b_list[i] / b_max * 15.9))
+        # print(hashString)
+        return hashString
+
+    # def hashing(self, img):
+    #     open_cv_image = np.array(img)
+    #     open_cv_image = open_cv_image[:, :, ::-1].copy()
+    #     chans = cv2.split(open_cv_image)
+    #     colors = ("b", "g", "r")
+    #     for (chans, color) in zip(chans, colors):
+    #         hist = cv2.calcHist([chans], [0], None, [8], [0, 256])
+    #     (b, g, r) = cv2.split(open_cv_image)
+    #     bh = cv2.equalizeHist(b)
+    #     gh = cv2.equalizeHist(g)
+    #     rh = cv2.equalizeHist(r)
+    #     equ2 = cv2.merge((bh, gh, rh))
+    #     chans2 = cv2.split(equ2)
+    #     r_list = []
+    #     g_list = []
+    #     b_list = []
+    #     for (chans2, color) in zip(chans2, colors):
+    #         hist = cv2.calcHist([chans2], [0], None, [8], [0, 256])
+    #         if color == 'r':
+    #             r_list = hist.T[0]
+    #         if color == 'g':
+    #             g_list = hist.T[0]
+    #         if color == 'b':
+    #             b_list = hist.T[0]
+    #
+    #     hash_string = ''
+    #     r_max = max(r_list, key=abs)
+    #     g_max = max(g_list, key=abs)
+    #     b_max = max(b_list, key=abs)
+    #     for i in range(8):
+    #         hash_string += '{:01X}'.format(int(r_list[i] / r_max * 15.9))
+    #     for i in range(8):
+    #         hash_string += '{:01X}'.format(int(g_list[i] / g_max * 15.9))
+    #     for i in range(8):
+    #         hash_string += '{:01X}'.format(int(b_list[i] / b_max * 15.9))
+    #     return hash_string
 
     def map_to_grid(self, x, y):
         i, j = int(x), int(self.map_resolution - y)

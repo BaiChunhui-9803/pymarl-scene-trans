@@ -15,9 +15,12 @@ class QAgent:
         # self.cluster_qtable = pd.DataFrame(columns=self.avail_actions["avail_cluster_strengths"], dtype=np.float64)
         self.combat_qtable_dict = {}
         self.sub_clusters_qtable_tag = None
+        self.previous_sub_tag = None
 
         self.previous_combat_state = {}
         self.previous_combat_action = {}
+
+
 
 
 
@@ -40,6 +43,9 @@ class QAgent:
             self.previous_combat_state.update({combat_table_tag: None})
             self.previous_combat_action.update({combat_table_tag: None})
         return combat_table_tag
+
+    def cuda(self):
+        pass
 
 
 

@@ -2,7 +2,7 @@ import torch as th
 import numpy as np
 from types import SimpleNamespace as SN
 
-class CustomEpisodeCBSBatch:
+class CustomEpisodeCBSBatch_Single:
     def __init__(self,
                  scheme,
                  groups,
@@ -10,7 +10,7 @@ class CustomEpisodeCBSBatch:
                  max_seq_length,
                  data=None,
                  preprocess=None,
-                 device="cuda"):
+                 device="cpu"):
         self.scheme = scheme.copy()
         self.groups = groups
         self.batch_size = batch_size
@@ -50,28 +50,29 @@ class CustomEpisodeCBSBatch:
             self.data.episode_data[k] = v.to(device)
         self.device = device
 
-    def update(self, data, bs=None, ts=0, mark_filled=True):
-        if bs is None:
-            bs = range(self.batch_size)
-        for batch_id in bs:
-            t_id = ts
-            for k, v in data.items():
-                if k in self.data.transition_data:
-                    target = self.data.transition_data
-                    # if mark_filled:
+    def update(self, data, bs=0, ts=0, mark_filled=True):
+        batch_id = bs
+        t_id = ts
+        for k, v in data.items():
+            if k in self.data.transition_data:
+                target = self.data.transition_data
+                if mark_filled:
                     target["filled"][batch_id][t_id] = 1
-                    # mark_filled = False
-                elif k in self.data.episode_data:
-                    target = self.data.episode_data
-                else:
-                    raise KeyError("{} not found in transition or episode data".format(k))
+                    mark_filled = False
+            elif k in self.data.episode_data:
+                target = self.data.episode_data
+            else:
+                raise KeyError("{} not found in transition or episode data".format(k))
 
-                try:
-                    target[k][batch_id][t_id] = v[batch_id]
-                except Exception as e:
-                    print(bs, k, v, batch_id, t_id)
-                    raise e
+            target[k][batch_id][t_id] = v
+        # print(self.data.transition_data)
 
+            # if k in self.preprocess:
+            #     new_k = self.preprocess[k][0]
+            #     v = target[k][_slices]
+            #     for transform in self.preprocess[k][1]:
+            #         v = transform.transform(v)
+            #     target[new_k][_slices] = v.view_as(target[new_k][_slices])
 
     def _check_safe_view(self, v, dest):
         idx = len(v.shape) - 1
@@ -104,7 +105,7 @@ class CustomEpisodeCBSBatch:
             new_scheme = {key: self.scheme[key] for key in item}
             new_groups = {self.scheme[key]["group"]: self.groups[self.scheme[key]["group"]]
                           for key in item if "group" in self.scheme[key]}
-            ret = CustomEpisodeCBSBatch(new_scheme, new_groups, self.batch_size, self.max_seq_length, data=new_data, device=self.device)
+            ret = CustomEpisodeCBSBatch_Single(new_scheme, new_groups, self.batch_size, self.max_seq_length, data=new_data, device=self.device)
             return ret
         else:
             item = self._parse_slices(item)
@@ -117,7 +118,7 @@ class CustomEpisodeCBSBatch:
             ret_bs = self._get_num_items(item[0], self.batch_size)
             ret_max_t = self._get_num_items(item[1], self.max_seq_length)
 
-            ret = CustomEpisodeCBSBatch(self.scheme, self.groups, ret_bs, ret_max_t, data=new_data, device=self.device)
+            ret = CustomEpisodeCBSBatch_Single(self.scheme, self.groups, ret_bs, ret_max_t, data=new_data, device=self.device)
             return ret
 
     def _get_num_items(self, indexing_item, max_size):
@@ -166,13 +167,12 @@ class CustomEpisodeCBSBatch:
                                                                                      self.groups.keys())
 
 
-class CustomReplayBuffer(CustomEpisodeCBSBatch):
-    def __init__(self, scheme, groups, buffer_size, max_seq_length, buffer_pool={}, preprocess=None, device="cuda"):
-        super(CustomReplayBuffer, self).__init__(scheme, groups, buffer_size, max_seq_length, preprocess=preprocess, device=device)
+class CustomReplayBuffer_simgle(CustomEpisodeCBSBatch_Single):
+    def __init__(self, scheme, groups, buffer_size, max_seq_length, preprocess=None, device="cpu"):
+        super(CustomReplayBuffer_simgle, self).__init__(scheme, groups, buffer_size, max_seq_length, preprocess=preprocess, device=device)
         self.buffer_size = buffer_size  # same as self.batch_size but more explicit
         self.buffer_index = 0
         self.episodes_in_buffer = 0
-        self.buffer_pool = buffer_pool
 
     def retain_filled(self, ep_batch):
         filled = ep_batch.data.transition_data["filled"]
@@ -187,67 +187,36 @@ class CustomReplayBuffer(CustomEpisodeCBSBatch):
                 v[i] = v[i][:max_t]
 
     def insert_episode_batch(self, ep_batch):
-        # 除去ep_batch中，data.transition_data["filled"]为None的数据
-        self.retain_filled(ep_batch)
-        self.buffer_index = self.buffer_index % self.buffer_size
-        for k, v in ep_batch.data.transition_data.items():
-            for batch_id, k_batch_data in enumerate(v):
-                if self.buffer_index + batch_id not in self.buffer_pool:
-                    self.buffer_pool[self.buffer_index + batch_id] = {}
-                # if k not in self.buffer_pool[batch_id]:
-                self.buffer_pool[self.buffer_index + batch_id][k] = k_batch_data
-        self.buffer_index += ep_batch.batch_size
-        self.episodes_in_buffer = max(self.episodes_in_buffer, self.buffer_index)
-
-        # else:
-        #     for k, v in ep_batch.data.transition_data.items():
-        #         for i in range(ep_batch.batch_size):
-        #             self.buffer_pool[self.buffer_index][k][i] = v[i]
-        #     self.buffer_index += ep_batch.batch_size
-
-
-
-        # if len(self.buffer_pool) < self.buffer_size:
-        #     for k, v in ep_batch.data.transition_data.items():
-        #         self.data.transition_data[k][self.buffer_index] = v
-        #     self.buffer_pool.append(ep_batch)
-        #     self.episodes_in_buffer = max(self.episodes_in_buffer, self.buffer_index)
-        #     self.buffer_index += ep_batch.batch_size
-        # else:
-        #     self.buffer_pool[self.buffer_index] = ep_batch
-        #     self.buffer_index += ep_batch.batch_size
-
-        # if self.buffer_index + ep_batch.batch_size <= self.buffer_size:
-        #     # 将ep_batch中的数据插入到buffer_pool中
-        #     self.buffer_pool.append(ep_batch)
-        #     self.buffer_index += ep_batch.batch_size
-        #     self.episodes_in_buffer = max(self.episodes_in_buffer, self.buffer_index)
-        #     self.buffer_index = self.buffer_index % self.buffer_size
-        #     assert self.buffer_index < self.buffer_size
-
-
+        if self.buffer_index + ep_batch.batch_size <= self.buffer_size:
+            self.update(ep_batch.data.transition_data,
+                        slice(self.buffer_index, self.buffer_index + ep_batch.batch_size),
+                        slice(0, ep_batch.max_seq_length),
+                        mark_filled=False)
+            self.update(ep_batch.data.episode_data,
+                        slice(self.buffer_index, self.buffer_index + ep_batch.batch_size))
+            self.buffer_index = (self.buffer_index + ep_batch.batch_size)
+            self.episodes_in_buffer = max(self.episodes_in_buffer, self.buffer_index)
+            self.buffer_index = self.buffer_index % self.buffer_size
+            assert self.buffer_index < self.buffer_size
+        else:
+            buffer_left = self.buffer_size - self.buffer_index
+            self.insert_episode_batch(ep_batch[0:buffer_left, :])
+            self.insert_episode_batch(ep_batch[buffer_left:, :])
 
     def can_sample(self, batch_size):
         return self.episodes_in_buffer >= batch_size
 
     def sample(self, batch_size):
         assert self.can_sample(batch_size)
-        ids = np.random.choice(self.episodes_in_buffer, batch_size, replace=False)
-        try:
-            sample_buffer = {id: self.buffer_pool[id] for id in ids}
-        except Exception as e:
-            print(ids)
-            raise e
-        # sample_buffer = {id: self.buffer_pool[id] for id in ids}
-        if "filled" in self.scheme:
-            self.scheme.pop("filled")
-        return CustomReplayBuffer(self.scheme, self.groups, batch_size, self.max_seq_length,
-                                  buffer_pool=sample_buffer, device=self.device)
-
+        if self.episodes_in_buffer == batch_size:
+            return self[:batch_size]
+        else:
+            # Uniform sampling only atm
+            ep_ids = np.random.choice(self.episodes_in_buffer, batch_size, replace=False)
+            return self[ep_ids]
 
     def __repr__(self):
         return "ReplayBuffer. {}/{} episodes. Keys:{} Groups:{}".format(self.episodes_in_buffer,
                                                                         self.buffer_size,
                                                                         self.scheme.keys(),
                                                                         self.groups.keys())
-

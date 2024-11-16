@@ -23,8 +23,8 @@ class ShortTermReward:
         cur_enemy_units_alive = [enemy for enemy in enemies.values() if enemy.health > 0]
         pre_ally_units_alive = [agent for agent in previous_ally_units.values() if agent.health > 0]
         cur_ally_units_alive = [agent for agent in agents.values() if agent.health > 0]
-        self.r_kill = (len(pre_enemy_units_alive) - len(cur_enemy_units_alive)) * 10
-        self.r_fall = (len(pre_ally_units_alive) - len(cur_ally_units_alive)) * -10
+        self.r_kill = (len(pre_enemy_units_alive) - len(cur_enemy_units_alive)) * 5
+        self.r_fall = (len(pre_ally_units_alive) - len(cur_ally_units_alive)) * -5
 
         pre_health_ally = sum([agent.health for agent in previous_ally_units.values()])
         cur_health_ally = sum([agent.health for agent in agents.values()])
@@ -80,7 +80,8 @@ class ShortTermReward:
         if max_cur_enemy_attacks > max_pre_enemy_attacks:
             self.r_fire_coverage = (max_cur_enemy_attacks - max_pre_enemy_attacks) * 5
         if max_cur_ally_attacks < max_pre_ally_attacks:
-            self.r_covered_in_fire = (max_pre_ally_attacks - max_cur_ally_attacks) * 5
+            self.r_fire_coverage = (max_pre_ally_attacks - max_cur_ally_attacks) * 5
+            # self.r_covered_in_fire = (max_pre_ally_attacks - max_cur_ally_attacks) * 5
         return (self.r_kill + self.r_fall +
                 self.r_inferior + self.r_dominant +
                 self.r_self_health_loss_ratio + self.r_enemy_health_loss_ratio +

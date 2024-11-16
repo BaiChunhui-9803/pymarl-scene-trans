@@ -1,6 +1,7 @@
 from envs import REGISTRY as env_REGISTRY
 from functools import partial
 from components.custom_episode_buffer import CustomEpisodeCBSBatch
+from components.custom_episode_buffer_single import CustomEpisodeCBSBatch_Single
 import numpy as np
 
 import matplotlib
@@ -14,7 +15,7 @@ class EpisodeRunner:
         self.args = args
         self.logger = logger
         self.batch_size = self.args.batch_size_run
-        assert self.batch_size == 1
+        # assert self.batch_size == 1
 
         self.env = env_REGISTRY[self.args.env](**self.args.env_args)
 
@@ -32,8 +33,13 @@ class EpisodeRunner:
         self.log_train_stats_t = -1000000
 
     def setup(self, scheme, groups, preprocess, controller):
-        self.new_batch = partial(CustomEpisodeCBSBatch, scheme, groups, self.batch_size, self.episode_limit + 1,
+        if self.args.runner == "parallel_cbs":
+            self.new_batch = partial(CustomEpisodeCBSBatch, scheme, groups, self.batch_size, self.episode_limit + 1,
                                  preprocess=preprocess, device=self.args.device)
+        elif self.args.runner == "episode_cbs":
+            self.new_batch = partial(CustomEpisodeCBSBatch_Single, scheme, groups, self.batch_size, self.episode_limit + 1,
+                                 preprocess=preprocess, device=self.args.device)
+
         self.controller = controller
 
     def get_env_info(self):
@@ -60,20 +66,18 @@ class EpisodeRunner:
         while not terminated:
 
             pre_transition_data = {
-                # binich - self.env.get_state() -> self.env.get_im_state()
-                # using influence map hashing state
                 "upper_state": self.env.get_im_state(),
-                # binich - Preserved the original state.
+                # "upper_state": self.env.get_state(),
                 "original_state": self.env.get_original_state(),
                 "avail_actions": self.env.get_avail_actions(),
-                # "obs": [self.env.get_obs()]
             }
 
             self.batch.update(pre_transition_data, ts=self.t)
 
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch of size 1
-            actions, multi_action_data = self.controller.select_actions(self.env, self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
+            actions, multi_action_data = self.controller.select_actions(self.env, self.batch, t_ep=self.t, t_env=self.t_env,
+                                                     test_mode=test_mode)
 
             global_reward, short_reward, terminated, env_info = self.env.step(actions, self.args)
             episode_return += global_reward
@@ -94,6 +98,7 @@ class EpisodeRunner:
 
         last_data = {
             "upper_state": self.env.get_im_state(),
+            # "upper_state": self.env.get_state(),
             "original_state": self.env.get_original_state(),
             "avail_actions": self.env.get_avail_actions(),
         }
@@ -145,3 +150,5 @@ class EpisodeRunner:
             if k != "n_episodes":
                 self.logger.log_stat(prefix + k + "_mean" , v/stats["n_episodes"], self.t_env)
         stats.clear()
+
+
